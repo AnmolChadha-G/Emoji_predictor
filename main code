@@ -1,0 +1,123 @@
+import numpy as np
+import tensorflow
+import pandas as pd
+import emoji
+from keras.models import Sequential
+from keras.layers import Dense,SimpleRNN,LSTM,Embedding
+from keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.utils import to_categorical
+
+emoji_dict={
+    0: emoji.emojize(":stuck_out_tongue_winking_eye:"),
+    1: emoji.emojize(":camera:"),
+    2: emoji.emojize(":heart_eyes:"),
+    3: emoji.emojize(":joy:"),
+    4: emoji.emojize(":wink:"),
+    5: emoji.emojize(":christmas_tree:"),
+    6: emoji.emojize(":camera_flash:"),
+    7: emoji.emojize(":fire:"),
+    8: emoji.emojize(":kissing_heart:"),
+    9: emoji.emojize(":heart:"),
+    10: emoji.emojize(":grin:"),
+    11: emoji.emojize(":us:"),
+    12: emoji.emojize(":sunny:"),
+    13: emoji.emojize(":sparkles:"),
+    14: emoji.emojize(":blue_heart:"),
+    15: emoji.emojize(":two_hearts:"),
+    16: emoji.emojize(":sunglasses:"),
+    17: emoji.emojize(":blush:"),
+    18: emoji.emojize(":purple_heart:"),
+    19: emoji.emojize(":100:")
+}
+
+def label_to_emoji(label):
+  return emoji.emojize(emoji_dict[label])
+
+data=pd.read_csv(r"D:\dataset\emoji recoganizer\archive\Train.csv",header=None)
+data.head()
+
+data.dropna
+
+X=data[1].values
+Y=data[2].values
+
+for i in range(0,len(X)):
+  X[i]=X[i].lower().replace('\n','')
+
+stop=['!','@','$','%','"','#','^','&','/* \ */','/',':',';','+','-','*','.',',','?']
+fdata=[]
+for line in X:
+  a=""
+  for i in range(0,len(line)):
+    if line[i] not in stop and not(line[i].isnumeric()):
+      a+=line[i]
+  fdata.append(a)
+
+X=fdata
+
+X=X[1:]
+Y=Y[1:]
+
+file=open('D:\dataset\emoji recoganizer\glove.6B\glove.6B.300d.txt','r',encoding='utf8')
+content=file.readlines()
+file.close
+content
+
+embeddings={}
+for line in content:
+  line=line.split()
+  embeddings[line[0]]=np.array(line[1:],dtype=float)
+
+def get_maxlen(data):
+  maxlen=0
+  for word in data:
+    maxlen=max(maxlen,len(word))
+  return maxlen
+
+tokenizer=Tokenizer()
+tokenizer.fit_on_texts(X)
+word2index=tokenizer.word_index
+Xtokens=tokenizer.texts_to_sequences(X)
+maxlen=get_maxlen(Xtokens)
+Xtrain=pad_sequences(Xtokens,maxlen=maxlen,padding='post',truncating='post')
+Ytrain=to_categorical(Y)
+
+embed_size=300
+embedding_matrix=np.zeros((len(word2index)+1,embed_size))
+for word,i in word2index.items():
+  if(word in embeddings):
+    embed_vector=embeddings[word]
+    embedding_matrix[i]=embed_vector
+
+embedding_matrix
+
+model=Sequential([
+    Embedding(input_dim=len(word2index)+1,
+              output_dim=embed_size,
+              input_length=maxlen,
+              weights=[embedding_matrix],
+              trainable=False),
+    SimpleRNN(units=16,return_sequences=True),
+    SimpleRNN(units=4),
+    Dense(20,activation='softmax')
+])
+
+model.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy'])
+
+model.fit(Xtrain,Ytrain,epochs=10)
+
+print(Ytrain)
+
+def Run_Model(test):
+  test_seq=tokenizer.texts_to_sequences(test)
+  Xtest=pad_sequences(test_seq,maxlen=maxlen,padding='post',truncating='post')
+  y_pred=model.predict(Xtest)
+  y_pred=np.argmax(y_pred,axis=1)
+  for i in range(len(test)):
+    print(test[i],label_to_emoji(y_pred[i]))
+
+test=["hello i am photographer"]
+Run_Model(test)
+
+
