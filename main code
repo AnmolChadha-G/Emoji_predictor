@@ -117,7 +117,4 @@ def Run_Model(test):
   for i in range(len(test)):
     print(test[i],label_to_emoji(y_pred[i]))
 
-test=["hello i am photographer"]
-Run_Model(test)
-
 
